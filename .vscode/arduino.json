@@ -1,0 +1,5 @@
+{
+    "board": "rp2040:rp2040:adafruit_feather",
+    "configuration": "flash=8388608_0,freq=133,opt=Small,rtti=Disabled,stackprotect=Disabled,exceptions=Disabled,dbgport=Disabled,dbglvl=None,usbstack=picosdk,ipbtstack=ipv4only,uploadmethod=default",
+    "sketch": "BlueTrust\\BlueTrust.ino"
+}
