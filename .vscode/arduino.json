@@ -1,6 +1,6 @@
 {
     "board": "arduino:avr:uno",
-    "sketch": "BlueTrust\\test.ino",
+    "sketch": "BlueTrust\\BlueTrust.ino",
     "port": "COM6",
     "programmer": "arduino:avrisp"
 }

@@ -7,22 +7,25 @@
 */
 // Include:
 #include <Adafruit_NeoPixel.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 
 
 // Pin:
-#define PINI2CSDA 24 // I2C: SDA pin
-#define PINI2CSCL 25 // I2C: SCL pin
-#define PINSPIMOSI 19 // SPI: MOSI pin
-#define PINSPIMISO 20 // SPI: MISO pin
-#define PINSPISCLK 18 // SPI: SCLK pin
-#define PINTDSANALOG 27 // TDS: Analog pin
-#define PINBTRX 10 // Bluetooth: Use to RX pin
-#define PINBTTX 9 // Bluetooth: Use to TX pin
-#define PINJOYVER 28 // Joystick: vertical pin
-#define PINJOYHOR 29 // Joystick: horizontal pin
-#define PINJOYBTN 11 // Joystick: button pin
-#define PINLEDSTRIP 6 // LED Strip: control pin
-#define PINFANEN 12 // Motor Driver(Fan): EN pin
+#define PINI2CSDA 0 // I2C: SDA pin
+#define PINI2CSCL 0 // I2C: SCL pin
+#define PINSPIMOSI 0 // SPI: MOSI pin
+#define PINSPIMISO 0 // SPI: MISO pin
+#define PINSPISCLK 0 // SPI: SCLK pin
+#define PINTDSANALOG 0 // TDS: Analog pin
+#define PINBTRX 0 // Bluetooth: Use to RX pin
+#define PINBTTX 0 // Bluetooth: Use to TX pin
+#define PINJOYVER 0 // Joystick: vertical pin
+#define PINJOYHOR 0 // Joystick: horizontal pin
+#define PINJOYBTN 0 // Joystick: button pin
+#define PINLEDSTRIP 3 // LED Strip: control pin
+#define PINFANEN 5 // Motor Driver(Fan): EN pin
+#define PINTEMPSEN 2 // Tempreture Sensor Fin
 
 
 // Define:
@@ -39,6 +42,8 @@ void SetFanWithSpeed(uint8_t spd); // Set Fan with target speed
 
 // Object:
 Adafruit_NeoPixel ledStrip(AMOUNTLEDSTRIP, PINLEDSTRIP, NEO_GRB + NEO_KHZ800);
+OneWire tempOneWire(PINTEMPSEN);
+DallasTemperature tempSensors(&tempOneWire);
 
 
 
@@ -61,7 +66,7 @@ void setup(void) {
   ledStrip.clear(); // Set all pixel colors to 'off'
 
   // TEST:
-  SetFanRunFull();
+  //SetFanRunFull();
 }
 void loop(void) {
   // TEST:
@@ -70,8 +75,11 @@ void loop(void) {
     rColor = (rColor + 5) % 256;
     delay(30);
   }
-  
-
+  tempSensors.requestTemperatures();
+  float temp = tempSensors.getTempCByIndex(0);
+  uint8_t panSpd = map(constrain(temp, 27, 30), 27, 30, 0, 255);
+  SetFanWithSpeed(panSpd);
+  delay(200);
 }
 /* ### main ### */
 
