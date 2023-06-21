@@ -9,6 +9,15 @@
 #include <Adafruit_NeoPixel.h>
 
 
+
+
+/*
+
+
+TEST
+
+*/
+
 // Pin:
 #define PINI2CSDA 24 // I2C: SDA pin
 #define PINI2CSCL 25 // I2C: SCL pin
