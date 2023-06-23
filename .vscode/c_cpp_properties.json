@@ -21,6 +21,8 @@
                 "C:\\Users\\xhxhd\\OneDrive\\문서\\Arduino\\libraries\\Adafruit_NeoPixel",
                 "C:\\Users\\xhxhd\\OneDrive\\문서\\Arduino\\libraries\\OneWire",
                 "C:\\Users\\xhxhd\\OneDrive\\문서\\Arduino\\libraries\\DallasTemperature",
+                "E:\\programs_dev\\arduino\\libraries\\LCD",
+                "C:\\Users\\xhxhd\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\SPI\\src",
                 "c:\\users\\xhxhd\\appdata\\local\\arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7\\lib\\gcc\\avr\\7.3.0\\include",
                 "c:\\users\\xhxhd\\appdata\\local\\arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7\\lib\\gcc\\avr\\7.3.0\\include-fixed",
                 "c:\\users\\xhxhd\\appdata\\local\\arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7\\avr\\include"
