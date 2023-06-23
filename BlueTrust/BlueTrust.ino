@@ -13,6 +13,9 @@
 #include <LCD.h>
 #include <SPI.h>
 #include <SD.h>
+#include <RtcDS1302.h>
+#include <ThreeWire.h>
+
 
 // Pin:
 #define PINI2CSDA 0     // I2C: SDA pin
@@ -30,6 +33,9 @@
 #define PINFANEN 5      // Motor Driver(Fan): EN pin
 #define PINTEMPSEN 2    // Tempreture Sensor Fin
 #define PINSDCARDCS 4   // SD Card SPI CS pin
+#define PINRTCRST 8
+#define PINRTCCLK 6
+#define PINRTCDATA 1
 
 
 // Define:
@@ -55,6 +61,8 @@ Adafruit_NeoPixel ledStrip(AMOUNTLEDSTRIP, PINLEDSTRIP, NEO_GRB + NEO_KHZ800);
 OneWire tempOneWire(PINTEMPSEN);
 DallasTemperature tempSensors(&tempOneWire);
 File sensorValueLogFile;
+ThreeWire rtcWire(PINRTCDATA, PINRTCCLK, PINRTCRST);
+RtcDS1302<ThreeWire> objRtc(rtcWire);
 
 
 
@@ -87,6 +95,14 @@ void setup(void) {
   Tft.lcd_init(); // init TFT library
   Tft.setRotation(Rotation_90_D);
   SD.begin(PINSDCARDCS); // init SD card
+  objRtc.Begin();
+  /*
+  RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
+  if(objRtc.GetIsWriteProtected())
+    objRtc.SetIsWriteProtected(false);
+  objRtc.SetIsRunning(true);
+  objRtc.SetDateTime(compiled);  
+  */
 }
 void loop(void) {
   // Sensor:
@@ -94,9 +110,24 @@ void loop(void) {
   temperature = tempSensors.getTempCByIndex(0);
   tdsVal = GetTDSValue();
 
+  // Get RTC Time:
+  RtcDateTime dt = objRtc.GetDateTime();
+
+
   // Logging Sensor Value:
   sensorValueLogFile = SD.open("test.txt", FILE_WRITE);
-  sensorValueLogFile.print("TDS Value: ");
+  sensorValueLogFile.print(dt.Year());
+  sensorValueLogFile.print("/");
+  sensorValueLogFile.print(dt.Month());
+  sensorValueLogFile.print("/");
+  sensorValueLogFile.print(dt.Day());
+  sensorValueLogFile.print(" ");
+  sensorValueLogFile.print(dt.Hour());
+  sensorValueLogFile.print(":");
+  sensorValueLogFile.print(dt.Minute());
+  sensorValueLogFile.print(":");
+  sensorValueLogFile.print(dt.Second());
+  sensorValueLogFile.print(" | TDS Value: ");
   sensorValueLogFile.print(tdsVal);
   sensorValueLogFile.print(" ppm | Temp: ");
   sensorValueLogFile.print(temperature);
@@ -118,10 +149,25 @@ void loop(void) {
 
   // For LCD Screen:
   Tft.lcd_clear_screen(WHITE);
-  Tft.lcd_display_string(30, 30, (const uint8_t *)"TDS Value(ppm):", FONT_1608, RED);
-  Tft.lcd_display_num(160, 30, (const uint32_t)tdsVal, 5, FONT_1608, RED);
-  Tft.lcd_display_string(30, 50, (const uint8_t *)"Temperature(C):", FONT_1608, RED);
-  Tft.lcd_display_num(160, 50, (const uint32_t)temperature, 5, FONT_1608, RED);
+  Tft.lcd_display_num(30, 20, (const uint16_t)dt.Year(), 4, FONT_1608, RED);
+  Tft.lcd_display_string(60, 20, (const uint8_t *)"/", FONT_1608, RED);
+  Tft.lcd_display_num(65, 20, (const uint8_t)dt.Month(), 2, FONT_1608, RED);
+  Tft.lcd_display_string(80, 20, (const uint8_t *)"/", FONT_1608, RED);
+  Tft.lcd_display_num(90, 20, (const uint8_t)dt.Day(), 2, FONT_1608, RED);
+  Tft.lcd_display_num(130, 20, (const uint8_t)dt.Hour(), 2, FONT_1608, RED);
+  Tft.lcd_display_string(160, 20, (const uint8_t *)":", FONT_1608, RED);
+  Tft.lcd_display_num(170, 20, (const uint8_t)dt.Minute(), 2, FONT_1608, RED);
+  Tft.lcd_display_string(200, 20, (const uint8_t *)":", FONT_1608, RED);
+  Tft.lcd_display_num(210, 20, (const uint8_t)dt.Second(),2 , FONT_1608, RED);
+
+
+
+
+
+  Tft.lcd_display_string(30, 50, (const uint8_t *)"TDS Value(ppm):", FONT_1608, RED);
+  Tft.lcd_display_num(160, 50, (const uint32_t)tdsVal, 5, FONT_1608, RED);
+  Tft.lcd_display_string(30, 80, (const uint8_t *)"Temperature(C):", FONT_1608, RED);
+  Tft.lcd_display_num(160, 80, (const uint32_t)temperature, 5, FONT_1608, RED);
 
 
   delay(80);
