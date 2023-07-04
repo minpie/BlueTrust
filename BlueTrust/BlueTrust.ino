@@ -15,6 +15,8 @@
 #include <SD.h>
 #include <RtcDS1302.h>
 #include <ThreeWire.h>
+#include <EEPROM.h>
+#include <time.h>
 
 
 // Pin:
@@ -38,6 +40,22 @@
 #define PINRTCDATA 1
 
 
+/*
+EEPROM DATA ADDRESS
+[ADDRESS] : [DATA INFO]
+-----------------------
+0번지~5번지: (컴파일된 연,월,일,시,분,초)
+
+*/
+#define ADDR_COMPILE_TIME_YEAR 0
+#define ADDR_COMPILE_TIME_MONTH 1
+#define ADDR_COMPILE_TIME_DAY 2
+#define ADDR_COMPILE_TIME_HOUR 3
+#define ADDR_COMPILE_TIME_MINUTE 4
+#define ADDR_COMPILE_TIME_SECOND 5
+#define EEPROM_ADDRESS_AMOUNT 6 // EEPROM에 저장된 개수
+
+
 // Define:
 #define AMOUNTLEDSTRIP 60 // Amount of LED in LED Strip
 #define LEDBRIGHTNESS 250 // LED Strip's brightness, max: 255 min: 0
@@ -47,6 +65,8 @@
 #define SCOUNT 5          // sum of sample point
 
 
+
+
 // Function:
 void SetLEDStrip(uint8_t ledNumber, uint8_t r, uint8_t g, uint8_t b); // Set (ledNumber)LED's color
 void SetFanStop(void); // Set Fan to stop
@@ -54,6 +74,10 @@ void SetFanRunFull(void); // Set Fan to run at full speed
 void SetFanWithSpeed(uint8_t spd); // Set Fan with target speed
 int GetMedianNum(int bArray[], int iFilterLen);
 float GetTDSValue(void); // Get TDS Value
+void SetTimeAtCompiled(); // Set RTC Time to Compiled time
+void ReadValFromRom(); // Read Value From EEPROM
+void GetCompiledTime();
+uint32_t GetTimeValue(int year, int month, int day, int hour, int minute, int second);
 
 
 // Object:
@@ -63,6 +87,12 @@ DallasTemperature tempSensors(&tempOneWire);
 File sensorValueLogFile;
 ThreeWire rtcWire(PINRTCDATA, PINRTCCLK, PINRTCRST);
 RtcDS1302<ThreeWire> objRtc(rtcWire);
+
+// Variable(ROM):
+uint8_t isFirstRunAfterCompile = 1; // 컴파일 후 첫 실행 여부
+int compileTimes[6] = {0, 0, 0, 0, 0, 0};
+int compileTimesInRom[6] = {0, 0, 0, 0, 0, 0};
+
 
 
 
@@ -96,13 +126,34 @@ void setup(void) {
   Tft.setRotation(Rotation_90_D);
   SD.begin(PINSDCARDCS); // init SD card
   objRtc.Begin();
-  /*
-  RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
-  if(objRtc.GetIsWriteProtected())
-    objRtc.SetIsWriteProtected(false);
-  objRtc.SetIsRunning(true);
-  objRtc.SetDateTime(compiled);  
-  */
+
+
+  // read values from eeprom:
+  ReadValFromRom();
+  // 컴파일 후 한번만 실행을 위한 처리:
+  GetCompiledTime();
+  uint32_t compiledTime = GetTimeValue(compileTimes[0], compileTimes[1], compileTimes[2], compileTimes[3], compileTimes[4], compileTimes[5]);
+  uint32_t compiledTimeRom = GetTimeValue(compileTimesInRom[0], compileTimesInRom[1], compileTimesInRom[2], compileTimesInRom[3], compileTimesInRom[4] ,compileTimesInRom[5]);
+  if(compiledTime > compiledTimeRom){
+    isFirstRunAfterCompile = 1;
+  }else{
+    isFirstRunAfterCompile = 0;
+  }
+
+
+
+
+  // 컴파일 후 한번만 실행할 코드:
+  if(isFirstRunAfterCompile){
+    SetTimeAtCompiled();
+    EEPROM.write(ADDR_COMPILE_TIME_YEAR, compileTimes[0]);
+    EEPROM.write(ADDR_COMPILE_TIME_MONTH, compileTimes[1]);
+    EEPROM.write(ADDR_COMPILE_TIME_DAY, compileTimes[2]);
+    EEPROM.write(ADDR_COMPILE_TIME_HOUR, compileTimes[3]);
+    EEPROM.write(ADDR_COMPILE_TIME_MINUTE, compileTimes[4]);
+    EEPROM.write(ADDR_COMPILE_TIME_SECOND, compileTimes[5]);
+  }
+
 }
 void loop(void) {
   // Sensor:
@@ -168,6 +219,8 @@ void loop(void) {
   Tft.lcd_display_num(160, 50, (const uint32_t)tdsVal, 5, FONT_1608, RED);
   Tft.lcd_display_string(30, 80, (const uint8_t *)"Temperature(C):", FONT_1608, RED);
   Tft.lcd_display_num(160, 80, (const uint32_t)temperature, 5, FONT_1608, RED);
+  Tft.lcd_display_string(30, 100, (const uint8_t *)"isFirstRunAfterCompile:", FONT_1608, RED);
+  Tft.lcd_display_num(200, 100, (const uint32_t)isFirstRunAfterCompile, 5, FONT_1608, RED);
 
 
   delay(80);
@@ -229,4 +282,49 @@ float GetTDSValue(void){
   float compensationVolatge=averageVoltage/compensationCoefficient;  //temperature compensation
   tdsValue=(133.42*compensationVolatge*compensationVolatge*compensationVolatge - 255.86*compensationVolatge*compensationVolatge + 857.39*compensationVolatge)*0.5; //convert voltage value to tds value
   return tdsValue;
+}
+
+void SetTimeAtCompiled(){
+  RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
+  if(objRtc.GetIsWriteProtected())
+    objRtc.SetIsWriteProtected(false);
+  objRtc.SetIsRunning(true);
+  objRtc.SetDateTime(compiled);  
+}
+
+// Read Value From EEPROM:
+void ReadValFromRom(){
+  compileTimesInRom[0] = EEPROM.read(ADDR_COMPILE_TIME_YEAR);
+  compileTimesInRom[1] = EEPROM.read(ADDR_COMPILE_TIME_MONTH);
+  compileTimesInRom[2] = EEPROM.read(ADDR_COMPILE_TIME_DAY);
+  compileTimesInRom[3] = EEPROM.read(ADDR_COMPILE_TIME_HOUR);
+  compileTimesInRom[4] = EEPROM.read(ADDR_COMPILE_TIME_MINUTE);
+  compileTimesInRom[5] = EEPROM.read(ADDR_COMPILE_TIME_SECOND);
+}
+
+void GetCompiledTime(){
+  char buff[11];
+  int month, day, year, hour, minute, second;
+  static const char month_names[] = "JanFebMarAprMayJunJulAugSepOctNovDec";
+  sscanf(__DATE__, "%s %d %d", buff, &day, &year);
+  sscanf(__TIME__, "%02d:%02d:%02d", &hour, &minute, &second);
+  month = (strstr(month_names, buff)-month_names)/3+1;
+
+  compileTimes[0] = year;
+  compileTimes[1] = month;
+  compileTimes[2] = day;
+  compileTimes[3] = hour;
+  compileTimes[4] = minute;
+  compileTimes[5] = second;
+}
+
+uint32_t GetTimeValue(int year, int month, int day, int hour, int minute, int second){
+  uint32_t result = 0;
+  result += second;
+  result += (60 * minute);
+  result += (60 * 60 * hour);
+  result += (60 * 60 * 24 * day);
+  result += (60 * 60 * 24 * 30 * month);
+  result += (60 * 60 * 24 * 30 * 12 * (year - 2000));
+  return result;
 }
