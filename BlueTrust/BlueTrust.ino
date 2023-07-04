@@ -16,7 +16,6 @@
 #include <RtcDS1302.h>
 #include <ThreeWire.h>
 #include <EEPROM.h>
-#include <time.h>
 
 
 // Pin:
@@ -38,6 +37,7 @@
 #define PINRTCRST 8
 #define PINRTCCLK 6
 #define PINRTCDATA 1
+#define PINLEDSWITCH 20 // LED strip on/off pin
 
 
 /*
@@ -59,8 +59,8 @@ EEPROM DATA ADDRESS
 // Define:
 #define AMOUNTLEDSTRIP 60 // Amount of LED in LED Strip
 #define LEDBRIGHTNESS 250 // LED Strip's brightness, max: 255 min: 0
-#define TEMPSENMAX 30     // Tempereture Sensor Max
-#define TEMPSENMIN 20     // Tempereture Sensor Min
+#define TEMPSENMAX 35     // Tempereture Sensor Max
+#define TEMPSENMIN 15     // Tempereture Sensor Min
 #define VREF 5.0          // analog reference voltage(Volt) of the ADC
 #define SCOUNT 5          // sum of sample point
 
@@ -78,6 +78,7 @@ void SetTimeAtCompiled(); // Set RTC Time to Compiled time
 void ReadValFromRom(); // Read Value From EEPROM
 void GetCompiledTime();
 uint32_t GetTimeValue(int year, int month, int day, int hour, int minute, int second);
+void OnOffStrip();
 
 
 // Object:
@@ -97,13 +98,13 @@ int compileTimesInRom[6] = {0, 0, 0, 0, 0, 0};
 
 
 // TEST:
-uint8_t rColor = 0;
 uint8_t tdsVal = 0;
 uint8_t panSpd = 0;
 int analogBuffer[SCOUNT];    // store the analog value in the array, read from ADC
 int analogBufferTemp[SCOUNT];
 int analogBufferIndex = 0, copyIndex = 0;
 float averageVoltage = 0, tdsValue = 0, temperature = 0;
+uint8_t isLedStripOn = 1;
 
 
 // ### main ###
@@ -111,6 +112,7 @@ void setup(void) {
   // pin mode:
   pinMode(PINFANEN, OUTPUT); // motor driver en pin
   pinMode(PINTDSANALOG,INPUT); // TDS analog pin
+  pinMode(PINLEDSWITCH, INPUT_PULLUP); // LED Strp on/off button
 
   // LED Strip:
   ledStrip.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
@@ -123,15 +125,23 @@ void setup(void) {
   SPI.setClockDivider(SPI_CLOCK_DIV4);
   SPI.begin();    
   Tft.lcd_init(); // init TFT library
-  Tft.setRotation(Rotation_90_D);
+  Tft.setRotation(Rotation_0_D);
   SD.begin(PINSDCARDCS); // init SD card
   objRtc.Begin();
+  attachInterrupt(digitalPinToInterrupt(PINLEDSWITCH), OnOffStrip ,FALLING);
 
-
+  /*
+  RtcDateTime compiled = RtcDateTime("Jul 4 2023", __TIME__);
+  if(objRtc.GetIsWriteProtected())
+    objRtc.SetIsWriteProtected(false);
+  objRtc.SetIsRunning(true);
+  objRtc.SetDateTime(compiled);  
+  */
   // read values from eeprom:
   ReadValFromRom();
   // 컴파일 후 한번만 실행을 위한 처리:
   GetCompiledTime();
+  
   uint32_t compiledTime = GetTimeValue(compileTimes[0], compileTimes[1], compileTimes[2], compileTimes[3], compileTimes[4], compileTimes[5]);
   uint32_t compiledTimeRom = GetTimeValue(compileTimesInRom[0], compileTimesInRom[1], compileTimesInRom[2], compileTimesInRom[3], compileTimesInRom[4] ,compileTimesInRom[5]);
   if(compiledTime > compiledTimeRom){
@@ -186,12 +196,8 @@ void loop(void) {
   sensorValueLogFile.close();
 
 
-  // LED Strip:
-  for(uint8_t i=0; i<AMOUNTLEDSTRIP; i++){
-    SetLEDStrip(i, rColor, 255 - rColor, 127 - rColor);
-    rColor = (rColor + 5) % 256;
-    delay(10);
-  }
+
+  
 
   // Fan Control:
   panSpd = map(constrain(temperature, TEMPSENMIN, TEMPSENMAX), TEMPSENMIN, TEMPSENMAX, 120, 255);
@@ -200,6 +206,93 @@ void loop(void) {
 
   // For LCD Screen:
   Tft.lcd_clear_screen(WHITE);
+
+  /*
+  ********************************
+  *             시계
+  * 온도(바 형태)
+  * 수질(바 형태)
+  ********************************
+  */
+  // 시계(날짜):
+  Tft.lcd_display_num(70, 20, (const uint16_t)dt.Year(), 4, FONT_1206, RED);
+  Tft.lcd_display_string(96, 20, (const uint8_t *)"/", FONT_1206, RED);
+  Tft.lcd_display_num(104, 20, (const uint8_t)dt.Month(), 2, FONT_1206, RED);
+  Tft.lcd_display_string(118, 20, (const uint8_t *)"/", FONT_1206, RED);
+  Tft.lcd_display_num(126, 20, (const uint8_t)dt.Day(), 2, FONT_1206, RED);
+  // 시계(시간):
+  Tft.lcd_display_num(70, 32, (const uint8_t)dt.Hour(), 2, FONT_1608, RED);
+  Tft.lcd_display_string(88, 32, (const uint8_t *)":", FONT_1608, RED);
+  Tft.lcd_display_num(98, 32, (const uint8_t)dt.Minute(), 2, FONT_1608, RED);
+  Tft.lcd_display_string(116, 32, (const uint8_t *)":", FONT_1608, RED);
+  Tft.lcd_display_num(126, 32, (const uint8_t)dt.Second(),2 , FONT_1608, RED);
+
+
+  
+  // 온도:
+  uint8_t tempBar = map(constrain(temperature, TEMPSENMIN, TEMPSENMAX), TEMPSENMIN, TEMPSENMAX, 5, 180);
+  uint8_t tempStr[25];
+  sprintf(tempStr, "Water Temperature: %3d'C", (int)temperature);
+  Tft.lcd_display_string(5, 50, tempStr, FONT_1608, RED);
+  Tft.lcd_draw_h_line(5, 70, 235, RED);
+  Tft.lcd_draw_h_line(5, 80, 235, RED);
+  Tft.lcd_draw_v_line(5, 70, 10, RED);
+  Tft.lcd_draw_v_line(235, 70, 10, RED);
+  Tft.lcd_fill_rect(7, 71, tempBar, 8, BLUE);
+
+  
+  // 수질:
+  uint8_t tdsBar = map(constrain(tdsVal, 0, 750), 0, 750, 5, 225);
+  uint8_t tdsStr[18];
+  uint8_t waterqualityStr[30];
+  uint8_t waterGrade = 0;
+  if(tdsVal < 50){
+    waterGrade = 0;
+  }else if(tdsVal < 180){
+    waterGrade = 1;
+  }else if(tdsVal < 230){
+    waterGrade = 2;
+  }else if(tdsVal < 300){
+    waterGrade = 3;
+  }else{
+    waterGrade = 4;
+  }
+  char * waterQualityString[5] = {"clean", "good", "ordinary", "bad", "worst"};
+  sprintf(tdsStr, "TDS Value: %4dppm", tdsVal);
+  sprintf(waterqualityStr, "Water Quality: %s", waterQualityString[waterGrade]);
+  Tft.lcd_display_string(5, 80, tdsStr, FONT_1608, RED);
+  Tft.lcd_draw_h_line(5, 100, 235, RED);
+  Tft.lcd_draw_h_line(5, 110, 235, RED);
+  Tft.lcd_draw_v_line(5, 100, 10, RED);
+  Tft.lcd_draw_v_line(235, 100, 10, RED);
+  Tft.lcd_fill_rect(7, 101, tdsBar, 8, BLUE);
+  Tft.lcd_display_string(5, 110, waterqualityStr, FONT_1608, RED);
+
+  // 수질 그림:
+  switch(waterGrade){
+    case 0:
+      Tft.lcd_fill_rect(20, 140, 200, 160, WHITE);
+      break;
+    case 1:
+      Tft.lcd_fill_rect(20, 140, 200, 160, GBLUE);
+      break;
+    case 2:
+      Tft.lcd_fill_rect(20, 140, 200, 160, GREEN);
+      break;
+    case 3:
+      Tft.lcd_fill_rect(20, 140, 200, 160, YELLOW);
+      break;
+    case 4:
+      Tft.lcd_fill_rect(20, 140, 200, 160, RED);
+      break;
+  }
+  Tft.lcd_display_num(106, 207, (const uint32_t)tdsVal, 4, FONT_1608, RED);
+
+
+  
+  
+  /*
+  // TEST:
   Tft.lcd_display_num(30, 20, (const uint16_t)dt.Year(), 4, FONT_1608, RED);
   Tft.lcd_display_string(60, 20, (const uint8_t *)"/", FONT_1608, RED);
   Tft.lcd_display_num(65, 20, (const uint8_t)dt.Month(), 2, FONT_1608, RED);
@@ -210,20 +303,16 @@ void loop(void) {
   Tft.lcd_display_num(170, 20, (const uint8_t)dt.Minute(), 2, FONT_1608, RED);
   Tft.lcd_display_string(200, 20, (const uint8_t *)":", FONT_1608, RED);
   Tft.lcd_display_num(210, 20, (const uint8_t)dt.Second(),2 , FONT_1608, RED);
-
-
-
-
-
   Tft.lcd_display_string(30, 50, (const uint8_t *)"TDS Value(ppm):", FONT_1608, RED);
   Tft.lcd_display_num(160, 50, (const uint32_t)tdsVal, 5, FONT_1608, RED);
   Tft.lcd_display_string(30, 80, (const uint8_t *)"Temperature(C):", FONT_1608, RED);
   Tft.lcd_display_num(160, 80, (const uint32_t)temperature, 5, FONT_1608, RED);
   Tft.lcd_display_string(30, 100, (const uint8_t *)"isFirstRunAfterCompile:", FONT_1608, RED);
   Tft.lcd_display_num(200, 100, (const uint32_t)isFirstRunAfterCompile, 5, FONT_1608, RED);
+  */
 
 
-  delay(80);
+  delay(10);
 }
 // ### main ###
 
@@ -327,4 +416,19 @@ uint32_t GetTimeValue(int year, int month, int day, int hour, int minute, int se
   result += (60 * 60 * 24 * 30 * month);
   result += (60 * 60 * 24 * 30 * 12 * (year - 2000));
   return result;
+}
+
+void OnOffStrip(){
+  // LED Strip:
+  if(isLedStripOn){
+    isLedStripOn = 0;
+    for(uint8_t i=0; i<AMOUNTLEDSTRIP; i++){
+      SetLEDStrip(i, 255, 255, 255);
+    }
+  }else{
+    isLedStripOn = 1;
+    for(uint8_t i=0; i<AMOUNTLEDSTRIP; i++){
+      SetLEDStrip(i, 0, 0, 0);
+    }
+  }
 }
