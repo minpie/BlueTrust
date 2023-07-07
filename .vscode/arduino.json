@@ -1,6 +1,7 @@
 {
-    "board": "arduino:avr:uno",
+    "board": "arduino:avr:mega",
     "sketch": "BlueTrust\\BlueTrust.ino",
-    "port": "COM6",
-    "programmer": "arduino:avrisp"
+    "port": "COM4",
+    "programmer": "arduino:avrisp",
+    "configuration": "cpu=atmega2560"
 }
