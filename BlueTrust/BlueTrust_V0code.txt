@@ -1,9 +1,9 @@
 /* 
  *  BlueTrust.ino
  *  
- *  2023.07.14 ~
+ *  2023.04.12 ~ 2023.07.13
  *  
- *  V1
+ *  V0
 */
 // Include:
 #include <Adafruit_NeoPixel.h>
@@ -13,10 +13,52 @@
 #include <SD.h>
 #include <RtcDS1302.h>
 #include <ThreeWire.h>
-#include "related_Pin.h"
-#include "related_EEPROM.h"
-#include "related_Display.h"
-#include "related_JSON.h"
+#include <EEPROM.h>
+#include <SPI.h>
+#include <Adafruit_GFX.h> // graphics library
+#include <Adafruit_ST7789.h> // library for this display
+
+
+
+// Pin:
+#define PINI2CSDA 0     // I2C: SDA pin
+#define PINI2CSCL 0     // I2C: SCL pin
+#define PINSPIMOSI 11   // SPI: MOSI pin
+#define PINSPIMISO 12   // SPI: MISO pin
+#define PINSPISCLK 13   // SPI: SCLK pin
+#define PINTDSANALOG A0 // TDS: Analog pin
+#define PINBTRX 0       // Bluetooth: Use to RX pin
+#define PINBTTX 0       // Bluetooth: Use to TX pin
+#define PINJOYVER 0     // Joystick: vertical pin
+#define PINJOYHOR 0     // Joystick: horizontal pin
+#define PINJOYBTN 0     // Joystick: button pin
+#define PINLEDSTRIP 3   // LED Strip: control pin
+#define PINFANEN 5      // Motor Driver(Fan): EN pin
+#define PINTEMPSEN 2    // Tempreture Sensor Fin
+#define PINSDCARDCS 4   // SD Card SPI CS pin
+#define PINRTCRST 8     // RTC: reset pin
+#define PINRTCCLK 6     // RTC: CLK pin
+#define PINRTCDATA 1    // RTC: data pin
+#define PINLEDSWITCH 20 // LED strip on/off pin
+#define PINDISPLAYCS 10 // LCD: CS pin
+#define PINDISPLAYRST 9 // LCD: reset pin
+#define PINDISPLAYDC 7        // LCD: data pin
+
+
+/*
+EEPROM DATA ADDRESS
+[ADDRESS] : [DATA INFO]
+-----------------------
+0번지~5번지: (컴파일된 연,월,일,시,분,초)
+
+*/
+#define ADDR_COMPILE_TIME_YEAR 0
+#define ADDR_COMPILE_TIME_MONTH 1
+#define ADDR_COMPILE_TIME_DAY 2
+#define ADDR_COMPILE_TIME_HOUR 3
+#define ADDR_COMPILE_TIME_MINUTE 4
+#define ADDR_COMPILE_TIME_SECOND 5
+#define EEPROM_ADDRESS_AMOUNT 6 // EEPROM에 저장된 개수
 
 
 // Define:
@@ -26,8 +68,11 @@
 #define TEMPSENMIN 15     // Tempereture Sensor Min
 #define VREF 5.0          // analog reference voltage(Volt) of the ADC
 #define SCOUNT 5          // sum of sample point
-#define SIZESCREENWIDTH 240
-#define SIZESCREENHEIGHT 320
+#define FONT_1 1
+#define FONT_2 2
+#define FONT_3 3
+
+
 
 
 // Function:
@@ -40,13 +85,14 @@ float GetTDSValue(void); // Get TDS Value
 void SetTimeAtCompiled(void); // Set RTC Time to Compiled time
 void ReadValFromRom(void); // Read Value From EEPROM
 void GetCompiledTime(void);
-double GetTimeValueDOUBLE(int year, int month, int day, int hour, int minute, int second);
-unsigned long long int GetTimeValueUINT(int year, int month, int day, int hour, int minute, int second);
-void Callback_LEDStripBtn(void);
+double GetTimeValue(int year, int month, int day, int hour, int minute, int second);
+unsigned long long int GetTimeValue2(int year, int month, int day, int hour, int minute, int second);
+void OnOffStrip(void);
 void OnLedStrip(void);
 void OffLedStrip(void);
-bool convertToJson(const String& t, JsonVariant variant);
-void InterpretJsonToUi(char * text_json);
+void lcd_display_num(Adafruit_ST7789 lcd, uint16_t x, uint16_t y, uint32_t num, uint16_t clr);
+void lcd_display_string(Adafruit_ST7789 lcd, uint16_t x, uint16_t y, char * str, uint16_t font, uint16_t clr);
+
 
 // Object:
 Adafruit_NeoPixel ledStrip(AMOUNTLEDSTRIP, PINLEDSTRIP, NEO_GRB + NEO_KHZ800);
@@ -57,7 +103,6 @@ ThreeWire rtcWire(PINRTCDATA, PINRTCCLK, PINRTCRST);
 RtcDS1302<ThreeWire> objRtc(rtcWire);
 RtcDateTime dt;
 Adafruit_ST7789 tft = Adafruit_ST7789(PINDISPLAYCS, PINDISPLAYDC, PINDISPLAYRST); // display object
-related_Display Scn = related_Display(&tft, SIZESCREENWIDTH, SIZESCREENHEIGHT);
 
 // Variable(ROM):
 uint8_t isFirstRunAfterCompile = 1; // 컴파일 후 첫 실행 여부
@@ -65,15 +110,9 @@ int compileTimes[6] = {0, 0, 0, 0, 0, 0};
 int compileTimesInRom[6] = {0, 0, 0, 0, 0, 0};
 
 
-// Variable(about JSON):
-char * TESTJSON = "{\"TemperatureBarBox\":{\"type\":\"box\",\"x1\":\"5\",\"y1\":\"70\",\"width\":\"235\",\"height\":\"10\",\"color\":\"f800\"},\"TdsBarBox\":{\"type\":\"box\",\"x1\":\"5\",\"y1\":\"100\",\"width\":\"235\",\"height\":\"10\",\"color\":\"f800\"}}";
-const unsigned int capacity = 200;
-DynamicJsonDocument JsonDoc(capacity);
 
 
-
-
-// Variable:
+// TEST:
 uint8_t tdsVal = 0;
 uint8_t panSpd = 0;
 int analogBuffer[SCOUNT];    // store the analog value in the array, read from ADC
@@ -86,12 +125,6 @@ double currentTimeValue = 0;
 unsigned long long int ledStripOnPeriod = (8) * (60 * 60); // LED 켤 시간(단위: 시간)
 uint8_t flagLed = 1;
 uint8_t waterGrade = 0;
-uint8_t tdsBar;
-uint8_t tempBar;
-uint16_t waterGradeColor;
-uint16_t BarColor;
-char * waterQualityString[5] = {"clean", "good", "ordinary", "bad", "worst"};
-
 
 // ### main ###
 void setup(void) {
@@ -110,22 +143,22 @@ void setup(void) {
   SPI.setBitOrder(MSBFIRST);
   SPI.setClockDivider(SPI_CLOCK_DIV4);
   SPI.begin(); 
-  tft.init(SIZESCREENWIDTH, SIZESCREENHEIGHT); 
+  tft.init(240, 320); 
   tft.setRotation(0); // rotates the screen
   tft.fillScreen(ST77XX_WHITE); // fills the screen with black colour
   SD.begin(PINSDCARDCS); // init SD card
   objRtc.Begin();
-  attachInterrupt(digitalPinToInterrupt(PINLEDSWITCH), Callback_LEDStripBtn ,FALLING); // Setting Interrupt
+  attachInterrupt(digitalPinToInterrupt(PINLEDSWITCH), OnOffStrip ,FALLING);
 
 
   /*
   // RTC 강제 시간지정 코드
-  WriteRom(ADDR_COMPILE_TIME_YEAR, 2023);
-  WriteRom(ADDR_COMPILE_TIME_MONTH, 7);
-  WriteRom(ADDR_COMPILE_TIME_DAY, 3);
-  WriteRom(ADDR_COMPILE_TIME_HOUR, 12);
-  WriteRom(ADDR_COMPILE_TIME_MINUTE, 34);
-  WriteRom(ADDR_COMPILE_TIME_SECOND, 56);
+  EEPROM.write(ADDR_COMPILE_TIME_YEAR, 2023);
+  EEPROM.write(ADDR_COMPILE_TIME_MONTH, 7);
+  EEPROM.write(ADDR_COMPILE_TIME_DAY, 3);
+  EEPROM.write(ADDR_COMPILE_TIME_HOUR, 12);
+  EEPROM.write(ADDR_COMPILE_TIME_MINUTE, 34);
+  EEPROM.write(ADDR_COMPILE_TIME_SECOND, 56);
   RtcDateTime compiled = RtcDateTime("Jul 4 2023", __TIME__);
   if(objRtc.GetIsWriteProtected())
     objRtc.SetIsWriteProtected(false);
@@ -137,8 +170,8 @@ void setup(void) {
   ReadValFromRom();
   // 컴파일 후 한번만 실행을 위한 처리:
   GetCompiledTime();
-  unsigned long long int compiledTime = GetTimeValueUINT(compileTimes[0], compileTimes[1], compileTimes[2], compileTimes[3], compileTimes[4], compileTimes[5]);
-  unsigned long long int compiledTimeRom = GetTimeValueUINT(compileTimesInRom[0], compileTimesInRom[1], compileTimesInRom[2], compileTimesInRom[3], compileTimesInRom[4] ,compileTimesInRom[5]);
+  unsigned long long int compiledTime = GetTimeValue2(compileTimes[0], compileTimes[1], compileTimes[2], compileTimes[3], compileTimes[4], compileTimes[5]);
+  unsigned long long int compiledTimeRom = GetTimeValue2(compileTimesInRom[0], compileTimesInRom[1], compileTimesInRom[2], compileTimesInRom[3], compileTimesInRom[4] ,compileTimesInRom[5]);
   if(compiledTime > compiledTimeRom){
     isFirstRunAfterCompile = 1;
   }else{
@@ -149,18 +182,27 @@ void setup(void) {
   // 컴파일 후 한번만 실행할 코드:
   if(isFirstRunAfterCompile){
     SetTimeAtCompiled();
-    WriteRom(ADDR_COMPILE_TIME_YEAR, compileTimes[0]);
-    WriteRom(ADDR_COMPILE_TIME_MONTH, compileTimes[1]);
-    WriteRom(ADDR_COMPILE_TIME_DAY, compileTimes[2]);
-    WriteRom(ADDR_COMPILE_TIME_HOUR, compileTimes[3]);
-    WriteRom(ADDR_COMPILE_TIME_MINUTE, compileTimes[4]);
-    WriteRom(ADDR_COMPILE_TIME_SECOND, compileTimes[5]);
+    EEPROM.write(ADDR_COMPILE_TIME_YEAR, compileTimes[0]);
+    EEPROM.write(ADDR_COMPILE_TIME_MONTH, compileTimes[1]);
+    EEPROM.write(ADDR_COMPILE_TIME_DAY, compileTimes[2]);
+    EEPROM.write(ADDR_COMPILE_TIME_HOUR, compileTimes[3]);
+    EEPROM.write(ADDR_COMPILE_TIME_MINUTE, compileTimes[4]);
+    EEPROM.write(ADDR_COMPILE_TIME_SECOND, compileTimes[5]);
   }
 
 
 
   // UI 그리기:
-  InterpretJsonToUi(TESTJSON);
+  // 온도:
+  tft.drawFastHLine(5, 70, 235, ST77XX_RED);
+  tft.drawFastHLine(5, 80, 235, ST77XX_RED);
+  tft.drawFastVLine(5, 70, 10, ST77XX_RED);
+  tft.drawFastVLine(235, 70, 10, ST77XX_RED);
+  // 수질:
+  tft.drawFastHLine(5, 100, 235, ST77XX_RED);
+  tft.drawFastHLine(5, 110, 235, ST77XX_RED);
+  tft.drawFastVLine(5, 100, 10, ST77XX_RED);
+  tft.drawFastVLine(235, 100, 10, ST77XX_RED);
 }
 void loop(void) {
   // Sensor:
@@ -211,31 +253,37 @@ void loop(void) {
   ********************************
   */
   // 시계(날짜):
-  Scn.DisplayFilledRect(70, 20, 70, 20, ST77XX_WHITE);
-  Scn.DisplayNum(70, 20, (const uint16_t)dt.Year(), FONT_1, ST77XX_RED);
-  Scn.DisplayString(96, 20, "/", FONT_1, ST77XX_RED);
-  Scn.DisplayNum(104, 20, (const uint8_t)dt.Month(), FONT_1, ST77XX_RED);
-  Scn.DisplayString(118, 20, "/", FONT_1, ST77XX_RED);
-  Scn.DisplayNum(126, 20, (const uint8_t)dt.Day(), FONT_1, ST77XX_RED);
+  tft.fillRect(70, 20, 70, 20, ST77XX_WHITE);
+  lcd_display_num(tft, 70, 20, (const uint16_t)dt.Year(), FONT_1, ST77XX_RED);
+  lcd_display_string(tft, 96, 20, "/", FONT_1, ST77XX_RED);
+  lcd_display_num(tft, 104, 20, (const uint8_t)dt.Month(), FONT_1, ST77XX_RED);
+  lcd_display_string(tft, 118, 20, "/", FONT_1, ST77XX_RED);
+  lcd_display_num(tft, 126, 20, (const uint8_t)dt.Day(), FONT_1, ST77XX_RED);
   // 시계(시간):
-  Scn.DisplayNum(70, 32, (const uint8_t)dt.Hour(), FONT_1, ST77XX_RED);
-  Scn.DisplayString(88, 32, ":", FONT_1, ST77XX_RED);
-  Scn.DisplayNum(98, 32, (const uint8_t)dt.Minute(), FONT_1, ST77XX_RED);
-  Scn.DisplayString(116, 32, ":", FONT_1, ST77XX_RED);
-  Scn.DisplayNum(126, 32, (const uint8_t)dt.Second(), FONT_1, ST77XX_RED);
+  lcd_display_num(tft, 70, 32, (const uint8_t)dt.Hour(), FONT_1, ST77XX_RED);
+  lcd_display_string(tft, 88, 32, ":", FONT_1, ST77XX_RED);
+  lcd_display_num(tft, 98, 32, (const uint8_t)dt.Minute(), FONT_1, ST77XX_RED);
+  lcd_display_string(tft, 116, 32, ":", FONT_1, ST77XX_RED);
+  lcd_display_num(tft, 126, 32, (const uint8_t)dt.Second(), FONT_1, ST77XX_RED);
 
 
   
   // 온도:
-  tempBar = map(constrain(temperature, TEMPSENMIN, TEMPSENMAX), TEMPSENMIN, TEMPSENMAX, 5, 180);
+  tft.fillRect(5, 50, 160, 8, ST77XX_WHITE);
+  uint8_t tempBar = map(constrain(temperature, TEMPSENMIN, TEMPSENMAX), TEMPSENMIN, TEMPSENMAX, 5, 180);
   char tempStr[25];
   sprintf(tempStr, "Water Temperature: %3d'C", (int)temperature);
-  Scn.DisplayFilledRect(5, 50, 160, 8, ST77XX_WHITE);
-  Scn.DisplayString(5, 50, tempStr, FONT_1, ST77XX_RED);
+  lcd_display_string(tft, 5, 50, tempStr, FONT_1, ST77XX_RED);
+  tft.fillRect(7, 71, tempBar, 8, ST77XX_WHITE);
+  tft.drawFastHLine(5, 70, 235, ST77XX_RED);
+  tft.drawFastHLine(5, 80, 235, ST77XX_RED);
+  tft.drawFastVLine(5, 70, 10, ST77XX_RED);
+  tft.drawFastVLine(235, 70, 10, ST77XX_RED);
+  tft.fillRect(7, 71, tempBar, 8, ST77XX_BLUE);
 
   
   // 수질:
-  tdsBar = map(constrain(tdsVal, 0, 750), 0, 750, 5, 225);
+  uint8_t tdsBar = map(constrain(tdsVal, 0, 750), 0, 750, 5, 225);
   char tdsStr[18];
   char waterqualityStr[30];
   waterGrade = 0;
@@ -251,39 +299,67 @@ void loop(void) {
     waterGrade = 4;
   }
 
+  char * waterQualityString[5] = {"clean", "good", "ordinary", "bad", "worst"};
   sprintf(tdsStr, "TDS Value: %4dppm", tdsVal);
   sprintf(waterqualityStr, "Water Quality: %s", waterQualityString[waterGrade]);
-
-  Scn.DisplayFilledRect(5, 80, 120, 8, ST77XX_WHITE);
-  Scn.DisplayString(5, 80, tdsStr, FONT_1, ST77XX_RED);
-
+  tft.fillRect(7, 101, tdsBar, 8, ST77XX_WHITE);
+  tft.fillRect(5, 80, 120, 8, ST77XX_WHITE);
+  tft.fillRect(5, 110, 160, 8, ST77XX_WHITE);
+  tft.drawFastHLine(5, 100, 235, ST77XX_RED);
+  tft.drawFastHLine(5, 110, 235, ST77XX_RED);
+  tft.drawFastVLine(5, 100, 10, ST77XX_RED);
+  tft.drawFastVLine(235, 100, 10, ST77XX_RED);
+  tft.fillRect(7, 101, tdsBar, 8, ST77XX_BLUE);
+  lcd_display_string(tft, 5, 80, tdsStr, FONT_1, ST77XX_RED);
+  lcd_display_string(tft, 5, 110, waterqualityStr, FONT_1, ST77XX_RED);
 
   // 수질 그림:
   switch(waterGrade){
     case 0:
-      waterGradeColor = ST77XX_WHITE;
+      tft.fillCircle(120, 230, 80, ST77XX_WHITE);
       break;
     case 1:
-      waterGradeColor = ST77XX_BLUE;
+      tft.fillCircle(120, 230, 80, ST77XX_BLUE);
       break;
     case 2:
-      waterGradeColor = ST77XX_GREEN;
+      tft.fillCircle(120, 230, 80, ST77XX_GREEN);
       break;
     case 3:
-      waterGradeColor = ST77XX_YELLOW;
+      tft.fillCircle(120, 230, 80, ST77XX_YELLOW);
       break;
     case 4:
-      waterGradeColor = ST77XX_RED;
+      tft.fillCircle(120, 230, 80, ST77XX_RED);
       break;
   }
-  Scn.SetElement(0, Scn._Elem[0].x1, Scn._Elem[0].y1, 0, 0, Scn._Elem[0].radius, 1, 0, waterGradeColor, 0);
-  Scn.SetElement(1, Scn._Elem[1].x1, Scn._Elem[1].y1, tempBar, Scn._Elem[1].height, 0, 1, 0, Scn._Elem[1].color, 0);
-  Scn.SetElement(2, Scn._Elem[2].x1, Scn._Elem[2].y1, tdsBar, Scn._Elem[2].height, 0, 1, 0, Scn._Elem[2].color, 0);
-  Scn.SetElement(2, Scn._Elem[5].x1, Scn._Elem[5].y1, 0,0, 0, 1, (unsigned int*)&tdsVal, Scn._Elem[5].color, 0);
+  lcd_display_num(tft, 95, 207, (const uint32_t)tdsVal, FONT_3, ST77XX_RED);
+
+
+  
+  
+  /*
+  // TEST:
+  lcd_display_num(tft, 30, 20, (const uint16_t)dt.Year(), 4, FONT_1, ST77XX_RED);
+  lcd_display_string(tft, 60, 20, (const uint8_t *)"/", FONT_1, ST77XX_RED);
+  lcd_display_num(tft, 65, 20, (const uint8_t)dt.Month(), 2, FONT_1, ST77XX_RED);
+  lcd_display_string(tft, 80, 20, (const uint8_t *)"/", FONT_1, ST77XX_RED);
+  lcd_display_num(tft, 90, 20, (const uint8_t)dt.Day(), 2, FONT_1, ST77XX_RED);
+  lcd_display_num(tft, 130, 20, (const uint8_t)dt.Hour(), 2, FONT_1, ST77XX_RED);
+  lcd_display_string(tft, 160, 20, (const uint8_t *)":", FONT_1, ST77XX_RED);
+  lcd_display_num(tft, 170, 20, (const uint8_t)dt.Minute(), 2, FONT_1, ST77XX_RED);
+  lcd_display_string(tft, 200, 20, (const uint8_t *)":", FONT_1, ST77XX_RED);
+  lcd_display_num(tft, 210, 20, (const uint8_t)dt.Second(),2 , FONT_1, ST77XX_RED);
+  lcd_display_string(tft, 30, 50, (const uint8_t *)"TDS Value(ppm):", FONT_1, ST77XX_RED);
+  lcd_display_num(tft, 160, 50, (const uint32_t)tdsVal, 5, FONT_1, ST77XX_RED);
+  lcd_display_string(tft, 30, 80, (const uint8_t *)"Temperature(C):", FONT_1, ST77XX_RED);
+  lcd_display_num(tft, 160, 80, (const uint32_t)temperature, 5, FONT_1, ST77XX_RED);
+  lcd_display_string(tft, 30, 100, (const uint8_t *)"isFirstRunAfterCompile:", FONT_1, ST77XX_RED);
+  lcd_display_num(tft, 200, 100, (const uint32_t)isFirstRunAfterCompile, 5, FONT_1, ST77XX_RED);
+  */
+
 
 
  // LED Strip 일정 시간만 점등:
- currentTimeValue = GetTimeValueDOUBLE(dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
+ currentTimeValue = GetTimeValue(dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
  if(!isUserStoppedLedStrip){
   // 사용자가 LED를 끄지 않았으면:
   if((currentTimeValue - previousLedOnTimeValue) > (ledStripOnPeriod)){
@@ -295,13 +371,14 @@ void loop(void) {
   }else if(((currentTimeValue - previousLedOnTimeValue) > 0) && flagLed){
     // 지정된 시간이 지나지 않았으면:
       OnLedStrip();
-      previousLedOnTimeValue = GetTimeValueDOUBLE(dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
+      previousLedOnTimeValue = GetTimeValue(dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
       flagLed = 0;
   }
  }
 
 
- Scn.RunDisplayElements();
+
+
 
   delay(10);
 }
@@ -356,13 +433,10 @@ float GetTDSValue(void){
     analogBufferIndex = 0;
   for(copyIndex=0;copyIndex<SCOUNT;copyIndex++)
     analogBufferTemp[copyIndex]= analogBuffer[copyIndex];
-  averageVoltage = GetMedianNum(analogBufferTemp,SCOUNT) * (float)VREF / 1024.0; 
-  // read the analog value more stable by the median filtering algorithm, and convert to voltage value
-  float compensationCoefficient=1.0+0.02*(temperature-25.0);
-  //temperature compensation formula: fFinalResult(25^C) = fFinalResult(current)/(1.0+0.02*(fTP-25.0));
+  averageVoltage = GetMedianNum(analogBufferTemp,SCOUNT) * (float)VREF / 1024.0; // read the analog value more stable by the median filtering algorithm, and convert to voltage value
+  float compensationCoefficient=1.0+0.02*(temperature-25.0);    //temperature compensation formula: fFinalResult(25^C) = fFinalResult(current)/(1.0+0.02*(fTP-25.0));
   float compensationVolatge=averageVoltage/compensationCoefficient;  //temperature compensation
-  tdsValue=(133.42*compensationVolatge*compensationVolatge*compensationVolatge - 255.86*compensationVolatge*compensationVolatge + 857.39*compensationVolatge)*0.5;
-  //convert voltage value to tds value
+  tdsValue=(133.42*compensationVolatge*compensationVolatge*compensationVolatge - 255.86*compensationVolatge*compensationVolatge + 857.39*compensationVolatge)*0.5; //convert voltage value to tds value
   return tdsValue;
 }
 
@@ -376,12 +450,12 @@ void SetTimeAtCompiled(void){
 
 // Read Value From EEPROM:
 void ReadValFromRom(void){
-  compileTimesInRom[0] = ReadRom(ADDR_COMPILE_TIME_YEAR);
-  compileTimesInRom[1] = ReadRom(ADDR_COMPILE_TIME_MONTH);
-  compileTimesInRom[2] = ReadRom(ADDR_COMPILE_TIME_DAY);
-  compileTimesInRom[3] = ReadRom(ADDR_COMPILE_TIME_HOUR);
-  compileTimesInRom[4] = ReadRom(ADDR_COMPILE_TIME_MINUTE);
-  compileTimesInRom[5] = ReadRom(ADDR_COMPILE_TIME_SECOND);
+  compileTimesInRom[0] = EEPROM.read(ADDR_COMPILE_TIME_YEAR);
+  compileTimesInRom[1] = EEPROM.read(ADDR_COMPILE_TIME_MONTH);
+  compileTimesInRom[2] = EEPROM.read(ADDR_COMPILE_TIME_DAY);
+  compileTimesInRom[3] = EEPROM.read(ADDR_COMPILE_TIME_HOUR);
+  compileTimesInRom[4] = EEPROM.read(ADDR_COMPILE_TIME_MINUTE);
+  compileTimesInRom[5] = EEPROM.read(ADDR_COMPILE_TIME_SECOND);
 }
 
 void GetCompiledTime(void){
@@ -400,7 +474,7 @@ void GetCompiledTime(void){
   compileTimes[5] = second;
 }
 
-double GetTimeValueDOUBLE(int year, int month, int day, int hour, int minute, int second){
+double GetTimeValue(int year, int month, int day, int hour, int minute, int second){
   double result = 0;
   result += second;
   result += (60 * minute);
@@ -411,7 +485,7 @@ double GetTimeValueDOUBLE(int year, int month, int day, int hour, int minute, in
   return result;
 }
 
-unsigned long long int GetTimeValueUINT(int year, int month, int day, int hour, int minute, int second){
+unsigned long long int GetTimeValue2(int year, int month, int day, int hour, int minute, int second){
   unsigned long long int result = 0;
   result += second;
   result += (60 * minute);
@@ -422,12 +496,12 @@ unsigned long long int GetTimeValueUINT(int year, int month, int day, int hour, 
   return result;
 }
 
-void Callback_LEDStripBtn(void){
+void OnOffStrip(void){
   // LED Strip:
   if(isUserStoppedLedStrip){
     // LED 꺼짐 -> 켜짐
     dt = objRtc.GetDateTime();
-    previousLedOnTimeValue = GetTimeValueDOUBLE(dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
+    previousLedOnTimeValue = GetTimeValue(dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
     
     OnLedStrip();
     isUserStoppedLedStrip = 0;
@@ -451,54 +525,17 @@ void OffLedStrip(void){
   ledStrip.show();
 }
 
-
-void InterpretJsonToUi(char * text_json){
-  InterpretJson(&JsonDoc, text_json);
-  JsonObject jsonObj = JsonDoc.as<JsonObject>();
-  for(JsonPair jsonKV : jsonObj) {
-    // 1 객체:
-    JsonObject jsonElem = jsonKV.value().as<JsonObject>();
-
-
-    String uiElemTypeTemp = jsonElem["type"]; // UI객체 타입
-    char uiElemType[10];
-    uiElemTypeTemp.toCharArray(uiElemType, 10);
-    uint16_t x1, y1, width, height, radius, clr, fnt, update_flag;
-    x1 = jsonElem.containsKey("x1") ? jsonElem["x1"] : 0;
-    y1 = jsonElem.containsKey("y1") ? jsonElem["y1"] : 0;
-    width = jsonElem.containsKey("width") ? jsonElem["width"] : 0;
-    height = jsonElem.containsKey("height") ? jsonElem["height"] : 0;
-    radius = jsonElem.containsKey("radius") ? jsonElem["radius"] : 0;
-    clr = jsonElem.containsKey("color") ? jsonElem["color"] : 0;
-    BarColor = jsonElem.containsKey("color-bar") ? jsonElem["color-bar"] : 0;
-    fnt = jsonElem.containsKey("font") ? jsonElem["font"] : 0;
-    update_flag = jsonElem.containsKey("refresh") ? jsonElem["refresh"] : 0;
-
-
-    if(!strcmp(uiElemType, "1")){
-      // 일반 box 그리기:
-      Scn.AddElement(1, x1, y1, width, height, 0, update_flag, 0, clr, fnt);
-    }else if(!strcmp(uiElemType, "100")){
-      // 특수
-      Scn.AddElement(100, x1, y1, 0, 0, radius, 1, 0, waterGradeColor, fnt);
-    }else if(!strcmp(uiElemType, "101")){
-      // 특수
-      Scn.AddElement(101, x1, y1, tempBar, height, 0, 1, 0, BarColor, fnt);
-    }else if(!strcmp(uiElemType, "102")){
-      // 특수
-      Scn.AddElement(102, x1, y1, tdsBar, height, 0, 1, 0, BarColor, fnt);
-    }else if(!strcmp(uiElemType, "103")){
-      // 특수
-      Scn.AddElement(103, x1, y1, 0, 0, 0, 1, (unsigned int *)&temperature, clr, fnt);
-    }else if(!strcmp(uiElemType, "104")){
-      // 특수
-      Scn.AddElement(104, x1, y1, 0, 0, 0, 1, (unsigned int *)&tdsVal, clr, fnt);
-    }else if(!strcmp(uiElemType, "105")){
-      // 특수
-      Scn.AddElement(105, x1, y1, 0, 0, 0, 1, (unsigned int *)&tdsVal, clr, fnt);
-    }else if(!strcmp(uiElemType, "106")){
-      // 특수
-      Scn.AddElement(106, x1, y1, 0, 0, 0, 1, (unsigned int *)(waterQualityString[waterGrade]), clr, fnt);
-    }
-  }
+void lcd_display_num(Adafruit_ST7789 lcd, uint16_t x, uint16_t y, uint32_t num, uint16_t font, uint16_t clr){
+  lcd.setCursor(x, y); // starts to write text at y10 x10
+  lcd.setTextColor(clr); // text colour to white you can use hex codes like 0xDAB420 too
+  lcd.setTextSize(font); // sets font size
+  lcd.setTextWrap(true);
+  lcd.print(num);
+}
+void lcd_display_string(Adafruit_ST7789 lcd, uint16_t x, uint16_t y, char * str, uint16_t font, uint16_t clr){
+  lcd.setCursor(x, y); // starts to write text at y10 x10
+  lcd.setTextColor(clr); // text colour to white you can use hex codes like 0xDAB420 too
+  lcd.setTextSize(font); // sets font size
+  lcd.setTextWrap(true);
+  lcd.print(str);
 }

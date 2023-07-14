@@ -1,7 +1,7 @@
 {
     "board": "arduino:avr:mega",
     "sketch": "BlueTrust\\BlueTrust.ino",
-    "port": "COM4",
+    "port": "COM3",
     "programmer": "arduino:avrisp",
     "configuration": "cpu=atmega2560"
 }

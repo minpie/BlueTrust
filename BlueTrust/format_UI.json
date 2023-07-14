@@ -1,0 +1,76 @@
+{
+    "WaterQualityFilledCircle" : {
+        "type":"100",
+        "x1":"120",
+        "y1":"230",
+        "radius":"80",
+        "color":"f800",
+        "refresh":"0"
+    },
+    "TemperatureBar" : {
+        "type":"101",
+        "x1":"7",
+        "y1":"71",
+        "height":"8",
+        "color-bar":"1f",
+        "refresh":"0"
+    },
+    "TdsBar" : {
+        "type":"102",
+        "x1":"7",
+        "y1":"101",
+        "height":"8",
+        "color-bar":"1f",
+        "refresh":"0"
+    },
+    "TemperatureValue" : {
+        "type":"103",
+        "x1":"",
+        "y1":"50",
+        "color":"f800",
+        "font":"1",
+        "refresh":"0"
+    },
+    "TdsValue" : {
+        "type":"104",
+        "x1":"",
+        "y1":"80",
+        "color":"f800",
+        "font":"1",
+        "refresh":"0"
+    },
+    "TdsValueBig" : {
+        "type":"105",
+        "x1":"95",
+        "y1":"207",
+        "color":"f800",
+        "font":"3",
+        "refresh":"0"
+    },
+    "WaterQualityString" : {
+        "type":"106",
+        "x1":"5",
+        "y1":"110",
+        "color":"f800",
+        "font":"3",
+        "refresh":"0"
+    },
+    "TemperatureBarBox" : {
+        "type":"1",
+        "x1":"5",
+        "y1":"70",
+        "width":"235",
+        "height":"10",
+        "color":"f800",
+        "refresh":"0"
+    },
+    "TdsBarBox" : {
+        "type":"1",
+        "x1":"5",
+        "y1":"100",
+        "width":"235",
+        "height":"10",
+        "color":"f800",
+        "refresh":"0"
+    }
+}
