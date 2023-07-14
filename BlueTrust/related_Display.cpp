@@ -80,6 +80,10 @@ void related_Display::RunDisplayElements(void){
           DisplayFilledRect(_Elem[i].x1, _Elem[i].y1, _Elem[i].width, _Elem[i].height, BACKGROUND_COLOR);
           DisplayFilledRect(_Elem[i].x1, _Elem[i].y1, _Elem[i].width, _Elem[i].height, _Elem[i].color);
           break;
+        case 2:
+          DisplayString(_Elem[i].x1, _Elem[i].y1, (char *)(_Elem[i].context_addr), _Elem[i].font, BACKGROUND_COLOR);
+          DisplayString(_Elem[i].x1, _Elem[i].y1, (char *)(_Elem[i].context_addr), _Elem[i].font, _Elem[i].color);
+          break;
         case 100:
           DisplayFilledCircle(_Elem[i].x1, _Elem[i].y1, _Elem[i].radius, BACKGROUND_COLOR);
           DisplayFilledCircle(_Elem[i].x1, _Elem[i].y1, _Elem[i].radius, _Elem[i].color);
@@ -96,6 +100,8 @@ void related_Display::RunDisplayElements(void){
           DisplayNum(_Elem[i].x1, _Elem[i].y1, *(_Elem[i].context_addr), _Elem[i].font, _Elem[i].color);
           break;
         case 106:
+        case 107:
+        case 108:
           DisplayString(_Elem[i].x1, _Elem[i].y1, (char *)(_Elem[i].context_addr), _Elem[i].font, BACKGROUND_COLOR);
           DisplayString(_Elem[i].x1, _Elem[i].y1, (char *)(_Elem[i].context_addr), _Elem[i].font, _Elem[i].color);
       }

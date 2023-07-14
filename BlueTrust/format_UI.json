@@ -25,7 +25,7 @@
     },
     "TemperatureValue" : {
         "type":"103",
-        "x1":"",
+        "x1":"120",
         "y1":"50",
         "color":"f800",
         "font":"1",
@@ -33,7 +33,7 @@
     },
     "TdsValue" : {
         "type":"104",
-        "x1":"",
+        "x1":"100",
         "y1":"80",
         "color":"f800",
         "font":"1",
@@ -49,11 +49,29 @@
     },
     "WaterQualityString" : {
         "type":"106",
-        "x1":"5",
+        "x1":"100",
         "y1":"110",
         "color":"f800",
         "font":"3",
         "refresh":"0"
+    },
+    "DateStr" : {
+        "type":"107",
+        "x1":"70",
+        "y1":"20",
+        "color":"f800",
+        "font":"1",
+        "text":"????/??/??",
+        "refresh":"1"
+    },    
+    "TimeStr" : {
+        "type":"108",
+        "x1":"70",
+        "y1":"32",
+        "color":"f800",
+        "font":"1",
+        "text":"??:??:??",
+        "refresh":"1"
     },
     "TemperatureBarBox" : {
         "type":"1",
@@ -71,6 +89,33 @@
         "width":"235",
         "height":"10",
         "color":"f800",
+        "refresh":"0"
+    },
+    "Str1" : {
+        "type":"2",
+        "x1":"5",
+        "y1":"80",
+        "color":"f800",
+        "font":"1",
+        "text":"TDS Value(ppm):",
+        "refresh":"0"
+    },
+    "Str2" : {
+        "type":"2",
+        "x1":"5",
+        "y1":"50",
+        "color":"f800",
+        "font":"1",
+        "text":"Water Temperature('C):",
+        "refresh":"0"
+    },
+    "Str3" : {
+        "type":"2",
+        "x1":"5",
+        "y1":"110",
+        "color":"f800",
+        "font":"1",
+        "text":"Water Quality:",
         "refresh":"0"
     }
 }

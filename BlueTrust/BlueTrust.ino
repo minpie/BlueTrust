@@ -66,9 +66,11 @@ int compileTimesInRom[6] = {0, 0, 0, 0, 0, 0};
 
 
 // Variable(about JSON):
-char * TESTJSON = "{\"TemperatureBarBox\":{\"type\":\"box\",\"x1\":\"5\",\"y1\":\"70\",\"width\":\"235\",\"height\":\"10\",\"color\":\"f800\"},\"TdsBarBox\":{\"type\":\"box\",\"x1\":\"5\",\"y1\":\"100\",\"width\":\"235\",\"height\":\"10\",\"color\":\"f800\"}}";
+//char * TESTJSON = "{\"TemperatureBarBox\":{\"type\":\"box\",\"x1\":\"5\",\"y1\":\"70\",\"width\":\"235\",\"height\":\"10\",\"color\":\"f800\"},\"TdsBarBox\":{\"type\":\"box\",\"x1\":\"5\",\"y1\":\"100\",\"width\":\"235\",\"height\":\"10\",\"color\":\"f800\"}}";
+const char TESTJSON[] PROGMEM = "{\"WaterQualityFilledCircle\":{\"type\":\"100\",\"x1\":\"120\",\"y1\":\"230\",\"radius\":\"80\",\"color\":\"f800\",\"refresh\":\"0\"},\"TemperatureBar\":{\"type\":\"101\",\"x1\":\"7\",\"y1\":\"71\",\"height\":\"8\",\"color-bar\":\"1f\",\"refresh\":\"0\"},\"TdsBar\":{\"type\":\"102\",\"x1\":\"7\",\"y1\":\"101\",\"height\":\"8\",\"color-bar\":\"1f\",\"refresh\":\"0\"},\"TemperatureValue\":{\"type\":\"103\",\"x1\":\"120\",\"y1\":\"50\",\"color\":\"f800\",\"font\":\"1\",\"refresh\":\"0\"},\"TdsValue\":{\"type\":\"104\",\"x1\":\"100\",\"y1\":\"80\",\"color\":\"f800\",\"font\":\"1\",\"refresh\":\"0\"},\"TdsValueBig\":{\"type\":\"105\",\"x1\":\"95\",\"y1\":\"207\",\"color\":\"f800\",\"font\":\"3\",\"refresh\":\"0\"},\"WaterQualityString\":{\"type\":\"106\",\"x1\":\"100\",\"y1\":\"110\",\"color\":\"f800\",\"font\":\"3\",\"refresh\":\"0\"},\"DateStr\":{\"type\":\"107\",\"x1\":\"70\",\"y1\":\"20\",\"color\":\"f800\",\"font\":\"1\",\"text\":\"????/??/??\",\"refresh\":\"1\"},\"TimeStr\":{\"type\":\"108\",\"x1\":\"70\",\"y1\":\"32\",\"color\":\"f800\",\"font\":\"1\",\"text\":\"??:??:??\",\"refresh\":\"1\"},\"TemperatureBarBox\":{\"type\":\"1\",\"x1\":\"5\",\"y1\":\"70\",\"width\":\"235\",\"height\":\"10\",\"color\":\"f800\",\"refresh\":\"0\"},\"TdsBarBox\":{\"type\":\"1\",\"x1\":\"5\",\"y1\":\"100\",\"width\":\"235\",\"height\":\"10\",\"color\":\"f800\",\"refresh\":\"0\"},\"Str1\":{\"type\":\"2\",\"x1\":\"5\",\"y1\":\"80\",\"color\":\"f800\",\"font\":\"1\",\"text\":\"TDSValue(ppm):\",\"refresh\":\"0\"},\"Str2\":{\"type\":\"2\",\"x1\":\"5\",\"y1\":\"50\",\"color\":\"f800\",\"font\":\"1\",\"text\":\"WaterTemperature('C):\",\"refresh\":\"0\"},\"Str3\":{\"type\":\"2\",\"x1\":\"5\",\"y1\":\"110\",\"color\":\"f800\",\"font\":\"1\",\"text\":\"WaterQuality:\",\"refresh\":\"0\"}}";
 const unsigned int capacity = 200;
 DynamicJsonDocument JsonDoc(capacity);
+char jsonFromSd[1000];
 
 
 
@@ -91,6 +93,8 @@ uint8_t tempBar;
 uint16_t waterGradeColor;
 uint16_t BarColor;
 char * waterQualityString[5] = {"clean", "good", "ordinary", "bad", "worst"};
+char DateStr[12];
+char TimeStr[10];
 
 
 // ### main ###
@@ -157,10 +161,18 @@ void setup(void) {
     WriteRom(ADDR_COMPILE_TIME_SECOND, compileTimes[5]);
   }
 
+  // SD카드에서 UI 정보 읽기:
+  File UiSd = SD.open("format_ui.json");
+  unsigned int fsize = UiSd.available();
+  for(unsigned int i=0; i<fsize; i++){
+    jsonFromSd[i] = UiSd.read();
+  }
+  UiSd.close();
 
-
+  
   // UI 그리기:
-  InterpretJsonToUi(TESTJSON);
+  //InterpretJsonToUi(TESTJSON);
+  InterpretJsonToUi(jsonFromSd);
 }
 void loop(void) {
   // Sensor:
@@ -211,29 +223,10 @@ void loop(void) {
   ********************************
   */
   // 시계(날짜):
-  Scn.DisplayFilledRect(70, 20, 70, 20, ST77XX_WHITE);
-  Scn.DisplayNum(70, 20, (const uint16_t)dt.Year(), FONT_1, ST77XX_RED);
-  Scn.DisplayString(96, 20, "/", FONT_1, ST77XX_RED);
-  Scn.DisplayNum(104, 20, (const uint8_t)dt.Month(), FONT_1, ST77XX_RED);
-  Scn.DisplayString(118, 20, "/", FONT_1, ST77XX_RED);
-  Scn.DisplayNum(126, 20, (const uint8_t)dt.Day(), FONT_1, ST77XX_RED);
-  // 시계(시간):
-  Scn.DisplayNum(70, 32, (const uint8_t)dt.Hour(), FONT_1, ST77XX_RED);
-  Scn.DisplayString(88, 32, ":", FONT_1, ST77XX_RED);
-  Scn.DisplayNum(98, 32, (const uint8_t)dt.Minute(), FONT_1, ST77XX_RED);
-  Scn.DisplayString(116, 32, ":", FONT_1, ST77XX_RED);
-  Scn.DisplayNum(126, 32, (const uint8_t)dt.Second(), FONT_1, ST77XX_RED);
-
-
-  
+  sprintf(DateStr, "%04d/%02d/%02d", dt.Year(), dt.Month(), dt.Day());
+  sprintf(TimeStr, "%02d/%02d/%02d", dt.Hour(), dt.Minute(), dt.Second());  
   // 온도:
-  tempBar = map(constrain(temperature, TEMPSENMIN, TEMPSENMAX), TEMPSENMIN, TEMPSENMAX, 5, 180);
-  char tempStr[25];
-  sprintf(tempStr, "Water Temperature: %3d'C", (int)temperature);
-  Scn.DisplayFilledRect(5, 50, 160, 8, ST77XX_WHITE);
-  Scn.DisplayString(5, 50, tempStr, FONT_1, ST77XX_RED);
-
-  
+  tempBar = map(constrain(temperature, TEMPSENMIN, TEMPSENMAX), TEMPSENMIN, TEMPSENMAX, 5, 180);  
   // 수질:
   tdsBar = map(constrain(tdsVal, 0, 750), 0, 750, 5, 225);
   char tdsStr[18];
@@ -250,14 +243,6 @@ void loop(void) {
   }else{
     waterGrade = 4;
   }
-
-  sprintf(tdsStr, "TDS Value: %4dppm", tdsVal);
-  sprintf(waterqualityStr, "Water Quality: %s", waterQualityString[waterGrade]);
-
-  Scn.DisplayFilledRect(5, 80, 120, 8, ST77XX_WHITE);
-  Scn.DisplayString(5, 80, tdsStr, FONT_1, ST77XX_RED);
-
-
   // 수질 그림:
   switch(waterGrade){
     case 0:
@@ -279,29 +264,34 @@ void loop(void) {
   Scn.SetElement(0, Scn._Elem[0].x1, Scn._Elem[0].y1, 0, 0, Scn._Elem[0].radius, 1, 0, waterGradeColor, 0);
   Scn.SetElement(1, Scn._Elem[1].x1, Scn._Elem[1].y1, tempBar, Scn._Elem[1].height, 0, 1, 0, Scn._Elem[1].color, 0);
   Scn.SetElement(2, Scn._Elem[2].x1, Scn._Elem[2].y1, tdsBar, Scn._Elem[2].height, 0, 1, 0, Scn._Elem[2].color, 0);
-  Scn.SetElement(2, Scn._Elem[5].x1, Scn._Elem[5].y1, 0,0, 0, 1, (unsigned int*)&tdsVal, Scn._Elem[5].color, 0);
+  Scn.SetElement(3, Scn._Elem[3].x1, Scn._Elem[3].y1, 0, 0, 0, 1, (unsigned int*)&temperature, Scn._Elem[3].color, 0);
+  Scn.SetElement(4, Scn._Elem[4].x1, Scn._Elem[4].y1, 0, 0, 0, 1, (unsigned int*)&tdsVal, Scn._Elem[4].color, 0);
+  Scn.SetElement(5, Scn._Elem[5].x1, Scn._Elem[5].y1, 0, 0, 0, 1, (unsigned int*)&tdsVal, Scn._Elem[5].color, 0);
+  Scn.SetElement(6, Scn._Elem[6].x1, Scn._Elem[6].y1, 0, 0, 0, 1, (unsigned int*)(waterQualityString[waterGrade]), Scn._Elem[6].color, 0);
+  Scn.SetElement(7, Scn._Elem[7].x1, Scn._Elem[7].y1, 0, 0, 0, 1, (unsigned int*)&DateStr, Scn._Elem[7].color, 0);
+  Scn.SetElement(8, Scn._Elem[8].x1, Scn._Elem[8].y1, 0, 0, 0, 1, (unsigned int*)&TimeStr, Scn._Elem[8].color, 0);
 
 
- // LED Strip 일정 시간만 점등:
- currentTimeValue = GetTimeValueDOUBLE(dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
- if(!isUserStoppedLedStrip){
-  // 사용자가 LED를 끄지 않았으면:
-  if((currentTimeValue - previousLedOnTimeValue) > (ledStripOnPeriod)){
-    // 지정된 시간이 지났으면:
-    // 끄고, 다음 시간에 켜기:
-    OffLedStrip();
-    previousLedOnTimeValue = previousLedOnTimeValue + (24 * 60 * 60);
-    flagLed = 1;
-  }else if(((currentTimeValue - previousLedOnTimeValue) > 0) && flagLed){
-    // 지정된 시간이 지나지 않았으면:
+  // LED Strip 일정 시간만 점등:
+  currentTimeValue = GetTimeValueDOUBLE(dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
+  if(!isUserStoppedLedStrip){
+    // 사용자가 LED를 끄지 않았으면:
+    if((currentTimeValue - previousLedOnTimeValue) > (ledStripOnPeriod)){
+      // 지정된 시간이 지났으면:
+      // 끄고, 다음 시간에 켜기:
+      OffLedStrip();
+      previousLedOnTimeValue = previousLedOnTimeValue + (24 * 60 * 60);
+      flagLed = 1;
+    }else if(((currentTimeValue - previousLedOnTimeValue) > 0) && flagLed){
+      // 지정된 시간이 지나지 않았으면:
       OnLedStrip();
       previousLedOnTimeValue = GetTimeValueDOUBLE(dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
       flagLed = 0;
+    }
   }
- }
 
 
- Scn.RunDisplayElements();
+  Scn.RunDisplayElements();
 
   delay(10);
 }
@@ -463,7 +453,10 @@ void InterpretJsonToUi(char * text_json){
     String uiElemTypeTemp = jsonElem["type"]; // UI객체 타입
     char uiElemType[10];
     uiElemTypeTemp.toCharArray(uiElemType, 10);
+    char contxt_str[80];
     uint16_t x1, y1, width, height, radius, clr, fnt, update_flag;
+    String contxt_str_tmp = jsonElem.containsKey("text") ? jsonElem["text"] : (String)"";
+    contxt_str_tmp.toCharArray(contxt_str, 80);
     x1 = jsonElem.containsKey("x1") ? jsonElem["x1"] : 0;
     y1 = jsonElem.containsKey("y1") ? jsonElem["y1"] : 0;
     width = jsonElem.containsKey("width") ? jsonElem["width"] : 0;
@@ -478,6 +471,9 @@ void InterpretJsonToUi(char * text_json){
     if(!strcmp(uiElemType, "1")){
       // 일반 box 그리기:
       Scn.AddElement(1, x1, y1, width, height, 0, update_flag, 0, clr, fnt);
+    }else if(!strcmp(uiElemType, "2")){
+      // 일반 문자열 그리기:
+      Scn.AddElement(2, x1, y1, 0, 0, 0, update_flag, (unsigned int *)contxt_str, clr, fnt);
     }else if(!strcmp(uiElemType, "100")){
       // 특수
       Scn.AddElement(100, x1, y1, 0, 0, radius, 1, 0, waterGradeColor, fnt);
@@ -499,6 +495,12 @@ void InterpretJsonToUi(char * text_json){
     }else if(!strcmp(uiElemType, "106")){
       // 특수
       Scn.AddElement(106, x1, y1, 0, 0, 0, 1, (unsigned int *)(waterQualityString[waterGrade]), clr, fnt);
+    }else if(!strcmp(uiElemType, "107")){
+      // 특수
+      Scn.AddElement(107, x1, y1, 0, 0, 0, 1, (unsigned int *)(DateStr), clr, fnt);
+    }else if(!strcmp(uiElemType, "108")){
+      // 특수
+      Scn.AddElement(108, x1, y1, 0, 0, 0, 1, (unsigned int *)(TimeStr), clr, fnt);
     }
   }
 }
