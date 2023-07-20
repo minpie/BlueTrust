@@ -134,7 +134,7 @@ void setup(void) {
   pinMode(PINLEDSWITCH, INPUT_PULLUP); // LED Strp on/off button
 
   // LED Strip:
-  ledStrip.begin(); // INITIALIZE NeoPixel strip object (REQUIST77XX_RED)
+  ledStrip.begin(); // INITIALIZE NeoPixel strip object (REQUIST77XX_BLACK)
   ledStrip.setBrightness(LEDBRIGHTNESS);
   ledStrip.clear(); // Set all pixel colors to 'off'
 
@@ -194,15 +194,15 @@ void setup(void) {
 
   // UI 그리기:
   // 온도:
-  tft.drawFastHLine(5, 70, 235, ST77XX_RED);
-  tft.drawFastHLine(5, 80, 235, ST77XX_RED);
-  tft.drawFastVLine(5, 70, 10, ST77XX_RED);
-  tft.drawFastVLine(235, 70, 10, ST77XX_RED);
+  tft.drawFastHLine(5, 70, 235, ST77XX_BLACK);
+  tft.drawFastHLine(5, 80, 235, ST77XX_BLACK);
+  tft.drawFastVLine(5, 70, 10, ST77XX_BLACK);
+  tft.drawFastVLine(235, 70, 10, ST77XX_BLACK);
   // 수질:
-  tft.drawFastHLine(5, 100, 235, ST77XX_RED);
-  tft.drawFastHLine(5, 110, 235, ST77XX_RED);
-  tft.drawFastVLine(5, 100, 10, ST77XX_RED);
-  tft.drawFastVLine(235, 100, 10, ST77XX_RED);
+  tft.drawFastHLine(5, 100, 235, ST77XX_BLACK);
+  tft.drawFastHLine(5, 110, 235, ST77XX_BLACK);
+  tft.drawFastVLine(5, 100, 10, ST77XX_BLACK);
+  tft.drawFastVLine(235, 100, 10, ST77XX_BLACK);
 }
 void loop(void) {
   // Sensor:
@@ -254,31 +254,31 @@ void loop(void) {
   */
   // 시계(날짜):
   tft.fillRect(70, 20, 70, 20, ST77XX_WHITE);
-  lcd_display_num(tft, 70, 20, (const uint16_t)dt.Year(), FONT_1, ST77XX_RED);
-  lcd_display_string(tft, 96, 20, "/", FONT_1, ST77XX_RED);
-  lcd_display_num(tft, 104, 20, (const uint8_t)dt.Month(), FONT_1, ST77XX_RED);
-  lcd_display_string(tft, 118, 20, "/", FONT_1, ST77XX_RED);
-  lcd_display_num(tft, 126, 20, (const uint8_t)dt.Day(), FONT_1, ST77XX_RED);
+  lcd_display_num(tft, 70, 20, (const uint16_t)dt.Year(), FONT_1, ST77XX_BLACK);
+  lcd_display_string(tft, 96, 20, "/", FONT_1, ST77XX_BLACK);
+  lcd_display_num(tft, 104, 20, (const uint8_t)dt.Month(), FONT_1, ST77XX_BLACK);
+  lcd_display_string(tft, 118, 20, "/", FONT_1, ST77XX_BLACK);
+  lcd_display_num(tft, 126, 20, (const uint8_t)dt.Day(), FONT_1, ST77XX_BLACK);
   // 시계(시간):
-  lcd_display_num(tft, 70, 32, (const uint8_t)dt.Hour(), FONT_1, ST77XX_RED);
-  lcd_display_string(tft, 88, 32, ":", FONT_1, ST77XX_RED);
-  lcd_display_num(tft, 98, 32, (const uint8_t)dt.Minute(), FONT_1, ST77XX_RED);
-  lcd_display_string(tft, 116, 32, ":", FONT_1, ST77XX_RED);
-  lcd_display_num(tft, 126, 32, (const uint8_t)dt.Second(), FONT_1, ST77XX_RED);
+  lcd_display_num(tft, 70, 32, (const uint8_t)dt.Hour(), FONT_1, ST77XX_BLACK);
+  lcd_display_string(tft, 88, 32, ":", FONT_1, ST77XX_BLACK);
+  lcd_display_num(tft, 98, 32, (const uint8_t)dt.Minute(), FONT_1, ST77XX_BLACK);
+  lcd_display_string(tft, 116, 32, ":", FONT_1, ST77XX_BLACK);
+  lcd_display_num(tft, 126, 32, (const uint8_t)dt.Second(), FONT_1, ST77XX_BLACK);
 
 
   
   // 온도:
-  tft.fillRect(5, 50, 160, 8, ST77XX_WHITE);
+  tft.fillRect(5, 52, 160, 8, ST77XX_WHITE);
   uint8_t tempBar = map(constrain(temperature, TEMPSENMIN, TEMPSENMAX), TEMPSENMIN, TEMPSENMAX, 5, 180);
   char tempStr[25];
   sprintf(tempStr, "Water Temperature: %3d'C", (int)temperature);
-  lcd_display_string(tft, 5, 50, tempStr, FONT_1, ST77XX_RED);
+  lcd_display_string(tft, 5, 52, tempStr, FONT_1, ST77XX_BLACK);
   tft.fillRect(7, 71, tempBar, 8, ST77XX_WHITE);
-  tft.drawFastHLine(5, 70, 235, ST77XX_RED);
-  tft.drawFastHLine(5, 80, 235, ST77XX_RED);
-  tft.drawFastVLine(5, 70, 10, ST77XX_RED);
-  tft.drawFastVLine(235, 70, 10, ST77XX_RED);
+  tft.drawFastHLine(5, 70, 235, ST77XX_BLACK);
+  tft.drawFastHLine(5, 80, 235, ST77XX_BLACK);
+  tft.drawFastVLine(5, 70, 10, ST77XX_BLACK);
+  tft.drawFastVLine(235, 70, 10, ST77XX_BLACK);
   tft.fillRect(7, 71, tempBar, 8, ST77XX_BLUE);
 
   
@@ -303,15 +303,15 @@ void loop(void) {
   sprintf(tdsStr, "TDS Value: %4dppm", tdsVal);
   sprintf(waterqualityStr, "Water Quality: %s", waterQualityString[waterGrade]);
   tft.fillRect(7, 101, tdsBar, 8, ST77XX_WHITE);
-  tft.fillRect(5, 80, 120, 8, ST77XX_WHITE);
-  tft.fillRect(5, 110, 160, 8, ST77XX_WHITE);
-  tft.drawFastHLine(5, 100, 235, ST77XX_RED);
-  tft.drawFastHLine(5, 110, 235, ST77XX_RED);
-  tft.drawFastVLine(5, 100, 10, ST77XX_RED);
-  tft.drawFastVLine(235, 100, 10, ST77XX_RED);
+  tft.fillRect(5, 82, 120, 8, ST77XX_WHITE);
+  tft.fillRect(5, 112, 160, 8, ST77XX_WHITE);
+  tft.drawFastHLine(5, 100, 235, ST77XX_BLACK);
+  tft.drawFastHLine(5, 110, 235, ST77XX_BLACK);
+  tft.drawFastVLine(5, 100, 10, ST77XX_BLACK);
+  tft.drawFastVLine(235, 100, 10, ST77XX_BLACK);
   tft.fillRect(7, 101, tdsBar, 8, ST77XX_BLUE);
-  lcd_display_string(tft, 5, 80, tdsStr, FONT_1, ST77XX_RED);
-  lcd_display_string(tft, 5, 110, waterqualityStr, FONT_1, ST77XX_RED);
+  lcd_display_string(tft, 5, 82, tdsStr, FONT_1, ST77XX_BLACK);
+  lcd_display_string(tft, 5, 112, waterqualityStr, FONT_1, ST77XX_BLACK);
 
   // 수질 그림:
   switch(waterGrade){
@@ -328,7 +328,7 @@ void loop(void) {
       tft.fillCircle(120, 230, 80, ST77XX_YELLOW);
       break;
     case 4:
-      tft.fillCircle(120, 230, 80, ST77XX_RED);
+      tft.fillCircle(120, 230, 80, ST77XX_BLACK);
       break;
   }
   lcd_display_num(tft, 95, 207, (const uint32_t)tdsVal, FONT_3, ST77XX_RED);
@@ -338,22 +338,22 @@ void loop(void) {
   
   /*
   // TEST:
-  lcd_display_num(tft, 30, 20, (const uint16_t)dt.Year(), 4, FONT_1, ST77XX_RED);
-  lcd_display_string(tft, 60, 20, (const uint8_t *)"/", FONT_1, ST77XX_RED);
-  lcd_display_num(tft, 65, 20, (const uint8_t)dt.Month(), 2, FONT_1, ST77XX_RED);
-  lcd_display_string(tft, 80, 20, (const uint8_t *)"/", FONT_1, ST77XX_RED);
-  lcd_display_num(tft, 90, 20, (const uint8_t)dt.Day(), 2, FONT_1, ST77XX_RED);
-  lcd_display_num(tft, 130, 20, (const uint8_t)dt.Hour(), 2, FONT_1, ST77XX_RED);
-  lcd_display_string(tft, 160, 20, (const uint8_t *)":", FONT_1, ST77XX_RED);
-  lcd_display_num(tft, 170, 20, (const uint8_t)dt.Minute(), 2, FONT_1, ST77XX_RED);
-  lcd_display_string(tft, 200, 20, (const uint8_t *)":", FONT_1, ST77XX_RED);
-  lcd_display_num(tft, 210, 20, (const uint8_t)dt.Second(),2 , FONT_1, ST77XX_RED);
-  lcd_display_string(tft, 30, 50, (const uint8_t *)"TDS Value(ppm):", FONT_1, ST77XX_RED);
-  lcd_display_num(tft, 160, 50, (const uint32_t)tdsVal, 5, FONT_1, ST77XX_RED);
-  lcd_display_string(tft, 30, 80, (const uint8_t *)"Temperature(C):", FONT_1, ST77XX_RED);
-  lcd_display_num(tft, 160, 80, (const uint32_t)temperature, 5, FONT_1, ST77XX_RED);
-  lcd_display_string(tft, 30, 100, (const uint8_t *)"isFirstRunAfterCompile:", FONT_1, ST77XX_RED);
-  lcd_display_num(tft, 200, 100, (const uint32_t)isFirstRunAfterCompile, 5, FONT_1, ST77XX_RED);
+  lcd_display_num(tft, 30, 20, (const uint16_t)dt.Year(), 4, FONT_1, ST77XX_BLACK);
+  lcd_display_string(tft, 60, 20, (const uint8_t *)"/", FONT_1, ST77XX_BLACK);
+  lcd_display_num(tft, 65, 20, (const uint8_t)dt.Month(), 2, FONT_1, ST77XX_BLACK);
+  lcd_display_string(tft, 80, 20, (const uint8_t *)"/", FONT_1, ST77XX_BLACK);
+  lcd_display_num(tft, 90, 20, (const uint8_t)dt.Day(), 2, FONT_1, ST77XX_BLACK);
+  lcd_display_num(tft, 130, 20, (const uint8_t)dt.Hour(), 2, FONT_1, ST77XX_BLACK);
+  lcd_display_string(tft, 160, 20, (const uint8_t *)":", FONT_1, ST77XX_BLACK);
+  lcd_display_num(tft, 170, 20, (const uint8_t)dt.Minute(), 2, FONT_1, ST77XX_BLACK);
+  lcd_display_string(tft, 200, 20, (const uint8_t *)":", FONT_1, ST77XX_BLACK);
+  lcd_display_num(tft, 210, 20, (const uint8_t)dt.Second(),2 , FONT_1, ST77XX_BLACK);
+  lcd_display_string(tft, 30, 50, (const uint8_t *)"TDS Value(ppm):", FONT_1, ST77XX_BLACK);
+  lcd_display_num(tft, 160, 50, (const uint32_t)tdsVal, 5, FONT_1, ST77XX_BLACK);
+  lcd_display_string(tft, 30, 80, (const uint8_t *)"Temperature(C):", FONT_1, ST77XX_BLACK);
+  lcd_display_num(tft, 160, 80, (const uint32_t)temperature, 5, FONT_1, ST77XX_BLACK);
+  lcd_display_string(tft, 30, 100, (const uint8_t *)"isFirstRunAfterCompile:", FONT_1, ST77XX_BLACK);
+  lcd_display_num(tft, 200, 100, (const uint32_t)isFirstRunAfterCompile, 5, FONT_1, ST77XX_BLACK);
   */
 
 

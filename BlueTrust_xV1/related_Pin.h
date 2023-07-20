@@ -26,5 +26,5 @@ Pins:
 #define PINLEDSWITCH 20 // LED strip on/off pin
 #define PINDISPLAYCS 10 // LCD: CS pin
 #define PINDISPLAYRST 9 // LCD: reset pin
-#define PINDISPLAYDC 7  // LCD: data pin
+#define PINDISPLAYDC 7        // LCD: data pin
 #endif

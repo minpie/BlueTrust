@@ -1,0 +1,131 @@
+{
+    "DateTimeWhiteBox":{
+        "type":102,
+        "x1":70,
+        "y1":20,
+        "width":90,
+        "height":20,
+        "color":65535,
+        "refresh":1
+    },
+    "DateStr" : {
+        "type":107,
+        "x1":70,
+        "y1":20,
+        "color":63488,
+        "font":1,
+        "text":"????/??/??",
+        "refresh":1
+    },    
+    "TimeStr" : {
+        "type":108,
+        "x1":70,
+        "y1":32,
+        "color":63488,
+        "font":1,
+        "text":"??:??:??",
+        "refresh":1
+    },
+    "WaterQualityFilledCircle" : {
+        "type":100,
+        "x1":120,
+        "y1":230,
+        "radius":80,
+        "color":63488,
+        "refresh":0
+    },
+    "TemperatureBar" : {
+        "type":101,
+        "x1":7,
+        "y1":71,
+        "height":8,
+        "color-bar":31,
+        "refresh":0
+    },
+    "TdsBar" : {
+        "type":102,
+        "x1":7,
+        "y1":101,
+        "height":8,
+        "color-bar":31,
+        "refresh":0
+    },
+    "TemperatureValue" : {
+        "type":103,
+        "x1":120,
+        "y1":50,
+        "color":63488,
+        "font":1,
+        "refresh":0
+    },
+    "TdsValue" : {
+        "type":104,
+        "x1":100,
+        "y1":80,
+        "color":63488,
+        "font":1,
+        "refresh":0
+    },
+    "TdsValueBig" : {
+        "type":105,
+        "x1":95,
+        "y1":207,
+        "color":63488,
+        "font":3,
+        "refresh":0
+    },
+    "WaterQualityString" : {
+        "type":106,
+        "x1":100,
+        "y1":110,
+        "color":63488,
+        "font":3,
+        "refresh":0
+    },
+
+    "TemperatureBarBox" : {
+        "type":1,
+        "x1":5,
+        "y1":70,
+        "width":235,
+        "height":10,
+        "color":27469,
+        "refresh":0
+    },
+    "TdsBarBox" : {
+        "type":1,
+        "x1":5,
+        "y1":100,
+        "width":235,
+        "height":10,
+        "color":27469,
+        "refresh":0
+    },
+    "Str1" : {
+        "type":2,
+        "x1":5,
+        "y1":80,
+        "color":63488,
+        "font":1,
+        "text":"TDS Value(ppm):",
+        "refresh":0
+    },
+    "Str2" : {
+        "type":2,
+        "x1":5,
+        "y1":50,
+        "color":63488,
+        "font":1,
+        "text":"Water Temperature('C):",
+        "refresh":0
+    },
+    "Str3" : {
+        "type":2,
+        "x1":5,
+        "y1":110,
+        "color":63488,
+        "font":1,
+        "text":"Water Quality:",
+        "refresh":0
+    }
+}
